@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Inscreva-se no Campeonato de Futebol Digital da AVOSOS — preenchimento rápido e simples.">
+  <meta name="theme-color" content="#2E7D32">
+  <title>Inscrição — Copa AVOSOS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div data-header></div>
+
+  <main id="main">
+    <section class="page-header">
+      <div class="container">
+        <h1>Chegou a hora de entrar em campo!</h1>
+        <p>Preencha os dados abaixo e use o código fornecido pela organização para solicitar sua vaga no Campeonato de Futebol Digital Copa AVOSOS.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <form class="form-card" id="formInscricao" novalidate data-form>
+          <div class="form-group">
+            <label for="nome">Nome completo do participante <span aria-hidden="true" style="color:#C62828;">*</span></label>
+            <input type="text" id="nome" name="nome" class="form-control" required autocomplete="name" minlength="3">
+            <p class="form-error" data-error-for="nome">Por favor, conte pra gente o nome do participante.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="nascimento">Data de nascimento <span aria-hidden="true" style="color:#C62828;">*</span>
+              <span class="label-hint">Para preparar sua figurinha do tamanho certo!</span>
+            </label>
+            <input type="date" id="nascimento" name="nascimento" class="form-control" required>
+            <p class="form-error" data-error-for="nascimento">Escolha a data de nascimento.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="responsavel">Nome do responsável legal <span aria-hidden="true" style="color:#C62828;">*</span>
+              <span class="label-hint">Para participantes menores de 18 anos.</span>
+            </label>
+            <input type="text" id="responsavel" name="responsavel" class="form-control" required autocomplete="name" minlength="3">
+            <p class="form-error" data-error-for="responsavel">Precisamos do nome do responsável.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="whatsapp">WhatsApp de contato <span aria-hidden="true" style="color:#C62828;">*</span>
+              <span class="label-hint">Para a equipe falar com você. Exemplo: (79) 99876-5432</span>
+            </label>
+            <input type="tel" id="whatsapp" name="whatsapp" class="form-control" required autocomplete="tel" inputmode="numeric">
+            <p class="form-error" data-error-for="whatsapp">O número de WhatsApp deve ter 11 dígitos com DDD. Confira e tente novamente.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="codigo_convite">Código de convite do evento <span aria-hidden="true" style="color:#C62828;">*</span>
+              <span class="label-hint">Solicite o código à equipe organizadora.</span>
+            </label>
+            <input type="password" id="codigo_convite" name="codigo_convite" class="form-control" required autocomplete="off" minlength="8" maxlength="64">
+            <p class="form-error" data-error-for="codigo_convite">Informe o código de convite fornecido pela organização.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="username">Nome de usuário <span aria-hidden="true" style="color:#C62828;">*</span>
+              <span class="label-hint">Será usado para entrar na sua área. Letras minúsculas, números e _ (3 a 30 caracteres).</span>
+            </label>
+            <input type="text" id="username" name="username" class="form-control" required autocomplete="username" minlength="3" maxlength="30" pattern="[a-z0-9_]+" placeholder="ex: lucassilva">
+            <p class="form-status" data-status-for="username" style="font-size: 13px; margin-top: 6px; min-height: 18px;"></p>
+            <p class="form-error" data-error-for="username">Use 3 a 30 caracteres — apenas letras minúsculas, números e underline.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="senha">Crie uma senha <span aria-hidden="true" style="color:#C62828;">*</span>
+              <span class="label-hint">Mínimo 8 caracteres. Use uma senha exclusiva.</span>
+            </label>
+            <input type="password" id="senha" name="senha" class="form-control" required autocomplete="new-password" minlength="8" maxlength="128">
+            <p class="form-error" data-error-for="senha">A senha precisa ter pelo menos 8 caracteres.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="como">Como soube do evento? <span aria-hidden="true" style="color:#C62828;">*</span></label>
+            <select id="como" name="como" class="form-control" required>
+              <option value="">-- Escolha uma opção --</option>
+              <option value="AVOSOS">Pela AVOSOS</option>
+              <option value="Universidade">Pela Universidade Tiradentes</option>
+              <option value="Amigo">Por um amigo ou familiar</option>
+              <option value="Redes sociais">Pelas redes sociais</option>
+              <option value="Outro">Outro</option>
+            </select>
+            <p class="form-error" data-error-for="como">Escolha como você conheceu o evento.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="poder">Qual seu superpoder? <span class="label-hint">(opcional — vai aparecer na sua figurinha! Ex: melhor drible, goleiro invicto, risada contagiante)</span></label>
+            <input type="text" id="poder" name="poder" class="form-control" maxlength="50" placeholder="Ex: melhor drible">
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="consentimento" name="consentimento" required>
+            <label for="consentimento">Autorizo o uso dos dados para organizar o campeonato. Nas páginas públicas serão exibidos apenas primeiro nome e inicial, grupo, superpoder e resultados. Data de nascimento, WhatsApp e responsável ficam restritos à equipe autorizada.</label>
+          </div>
+          <p class="form-error" data-error-for="consentimento" style="margin-top: -16px;">Precisamos da sua concordância para prosseguir.</p>
+
+          <button type="submit" class="btn btn-primary btn-large" style="width: 100%; margin-top: 18px;">
+            <span aria-hidden="true">🎮</span> Garantir minha vaga!
+          </button>
+
+          <p class="verify-link">
+            Já tem cadastro? <a href="login.html">Entrar na minha área →</a>
+          </p>
+        </form>
+
+        <!-- SUCESSO -->
+        <div class="form-card form-success" id="telaSucesso" hidden>
+          <div class="success-icon" aria-hidden="true">🎉</div>
+          <h2 style="color: var(--verde-escuro);">Sua inscrição foi confirmada!</h2>
+          <p id="msgSucesso" style="font-size: 17px; color: var(--texto-medio); margin: 16px 0 24px;"></p>
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <a href="minha-area.html" class="btn btn-primary">🪪 Ir para minha área</a>
+            <a href="album.html" class="btn btn-outline">⭐ Ver o álbum</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div data-footer></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/inscricao.js"></script>
+</body>
+</html>

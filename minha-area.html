@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Sua área pessoal na Copa AVOSOS — veja seu grupo, jogos e figurinha.">
+  <meta name="theme-color" content="#2E7D32">
+  <title>Minha Área — Copa AVOSOS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div data-header></div>
+
+  <main id="main">
+    <section class="page-header">
+      <div class="container">
+        <h1 id="tituloBoasVindas">Minha Área</h1>
+        <p>Seus dados, seu grupo, suas partidas — tudo num só lugar.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container" style="max-width: 920px;">
+        <div id="conteudoArea"></div>
+      </div>
+    </section>
+  </main>
+
+  <div data-footer></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function iniciais(nome) {
+      if (!nome) return '?';
+      const partes = nome.trim().split(/\s+/);
+      return ((partes[0]?.[0] || '') + (partes[partes.length - 1]?.[0] || '')).toUpperCase();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const wrap = document.getElementById('conteudoArea');
+
+      if (!Data.isLogged()) {
+        wrap.innerHTML = `
+          <div class="form-card text-center" style="max-width: 500px; margin: 0 auto;">
+            <div style="font-size: 60px;" aria-hidden="true">🔒</div>
+            <h2 style="color: var(--verde-escuro); margin-top: 12px;">Você não está logado</h2>
+            <p style="color: var(--texto-medio); margin: 12px 0 24px;">Para acessar sua área pessoal, faça login com o WhatsApp e senha cadastrados na inscrição.</p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+              <a href="login.html" class="btn btn-primary">🔓 Entrar</a>
+              <a href="inscricao.html" class="btn btn-outline">📝 Criar inscrição</a>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const perfil = await Api.me();
+
+        if (perfil.role === 'admin') {
+          // Admin chegou aqui — redireciona
+          wrap.innerHTML = `
+            <div class="form-card text-center">
+              <h2>Você é um administrador</h2>
+              <p style="margin: 14px 0;">Use o painel administrativo para gerenciar o evento.</p>
+              <a href="admin/" class="btn btn-primary">Ir ao painel admin</a>
+              <p style="margin-top: 18px;">
+                <a href="#" id="lnkSair">Sair</a>
+              </p>
+            </div>
+          `;
+          document.getElementById('lnkSair').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await Data.logout();
+            location.href = 'index.html';
+          });
+          return;
+        }
+
+        const ins = perfil.inscricao;
+        if (!ins) {
+          wrap.innerHTML = `
+            <div class="form-card text-center">
+              <h2>Conta sem inscrição vinculada</h2>
+              <p>Faça uma inscrição para participar.</p>
+              <a href="inscricao.html" class="btn btn-primary">Inscrever-se</a>
+            </div>
+          `;
+          return;
+        }
+
+        // Buscar grupo
+        let grupoNome = 'A definir';
+        let grupoId = ins.grupo_id;
+        if (grupoId) {
+          try {
+            const grupos = await Data.listGrupos();
+            const g = grupos.find(x => x.id === grupoId);
+            if (g) grupoNome = g.nome;
+          } catch (_) {}
+        }
+
+        // Buscar partidas do usuario + do grupo
+        let minhasPartidas = [];
+        let todas = [];
+        try {
+          todas = await Data.listPartidas();
+          minhasPartidas = todas.filter(p =>
+            p.jogadorA === ins.id || p.jogadorB === ins.id
+          );
+        } catch (_) {}
+
+        // Buscar nomes dos adversarios
+        let inscritos = [];
+        try { inscritos = await Data.listParticipantes(); } catch (_) {}
+        const nomeDe = (id) => inscritos.find(i => i.id === id)?.nome || '—';
+
+        document.getElementById('tituloBoasVindas').textContent =
+          `Olá, ${ins.nome.split(' ')[0]}! 👋`;
+
+        wrap.innerHTML = `
+          <!-- INDICADOR DE TEMPO REAL -->
+          <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--verde-claro); color: var(--verde-escuro); padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; margin-bottom: 16px;">
+            <span class="pulse-dot" style="display: inline-block; width: 8px; height: 8px; background: var(--verde-principal); border-radius: 50%;"></span>
+            Atualizando em tempo real
+          </div>
+
+          <!-- CARD DE PERFIL -->
+          <div class="form-card" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 22px;">
+            <div class="sticker-avatar" style="margin: 0; width: 80px; height: 80px; font-size: 30px;">${escapeHtml(iniciais(ins.nome))}</div>
+            <div style="flex: 1; min-width: 200px;">
+              <h2 style="margin-bottom: 4px;">${escapeHtml(ins.nome)}</h2>
+              <p style="color: var(--texto-medio); margin: 0;">
+                <span class="badge-pill" style="background: var(--verde-claro); color: var(--verde-escuro);">Usuário</span>
+                <span style="margin-left: 8px; font-family: monospace;">@${escapeHtml(perfil.username)}</span>
+                ${ins.superpoder ? '<span style="margin-left: 8px;">⭐ ' + escapeHtml(ins.superpoder) + '</span>' : ''}
+              </p>
+            </div>
+            <button class="btn btn-outline btn-sm" id="btnSair">Sair</button>
+          </div>
+
+          <!-- CARDS DE INFO -->
+          <div class="cards-grid">
+            <article class="card">
+              <div class="card-icon green" aria-hidden="true">🏁</div>
+              <h3>Meu grupo</h3>
+              <p id="meuGrupoTexto" style="font-size: 22px; font-weight: 700; color: var(--verde-escuro); margin: 4px 0; display: flex; align-items: center; gap: 10px; min-height: 42px;">
+                ${grupoId
+                  ? `${AppUtils.bandeiraSvg(grupoNome, 'flag-md')} <span>Grupo ${escapeHtml(grupoNome)}</span>`
+                  : '<span>Aguardando sorteio</span>'}
+              </p>
+              <p id="meuGrupoDescricao">${grupoId
+                ? 'Seu grupo foi sorteado! Veja seus adversários nas partidas abaixo.'
+                : 'O administrador ainda não sorteou seu grupo. Esta página atualiza sozinha — você verá assim que sair! ⏳'}</p>
+            </article>
+
+            <article class="card">
+              <div class="card-icon orange" aria-hidden="true">📅</div>
+              <h3>Inscrição</h3>
+              <p style="font-size: 13px; color: var(--texto-medio); margin: 0;">Feita em</p>
+              <p style="font-weight: 600; margin: 2px 0 6px;">${AppUtils.formatarData(ins.criado_em)}</p>
+              <p style="font-size: 13px; color: var(--texto-medio);">WhatsApp: ${escapeHtml(ins.whatsapp)}</p>
+            </article>
+
+            <article class="card">
+              <div class="card-icon yellow" aria-hidden="true">⚽</div>
+              <h3>Minhas partidas</h3>
+              <p style="font-size: 22px; font-weight: 700; color: var(--ambar-principal); margin: 4px 0;">
+                ${minhasPartidas.length}
+              </p>
+              <p>${minhasPartidas.length === 0 ? 'Nenhuma partida ainda — aguarde a programação.' : 'Veja a lista logo abaixo.'}</p>
+            </article>
+          </div>
+
+          ${(function renderPartidasDoGrupo() {
+            if (!grupoId) return '';
+            const partidasGrupo = todas.filter(p =>
+              p.fase === 'grupos' &&
+              (inscritos.find(i => i.id === p.jogadorA)?.grupo === grupoId)
+            ).filter(p => p.jogadorA !== ins.id && p.jogadorB !== ins.id);
+            if (partidasGrupo.length === 0) return '';
+            return `
+              <h2 style="margin: 36px 0 16px;">⚽ Outras partidas do Grupo ${escapeHtml(grupoNome)}</h2>
+              <div class="fixture-list">
+                ${partidasGrupo.map(p => {
+                  const concluida = p.status === 'concluida';
+                  const aVenceu = concluida && p.placarA > p.placarB;
+                  const bVenceu = concluida && p.placarB > p.placarA;
+                  return `
+                    <article class="match-card ${concluida ? '' : 'match-pending'}">
+                      <p class="match-time">${concluida ? 'Concluída' : 'Aguardando'}</p>
+                      <div class="match-row ${aVenceu ? 'winner' : ''}">
+                        <span class="player">${escapeHtml(nomeDe(p.jogadorA))}</span>
+                        <span class="score">${concluida ? p.placarA : '–'}</span>
+                      </div>
+                      <div class="match-row ${bVenceu ? 'winner' : ''}">
+                        <span class="player">${escapeHtml(nomeDe(p.jogadorB))}</span>
+                        <span class="score">${concluida ? p.placarB : '–'}</span>
+                      </div>
+                    </article>`;
+                }).join('')}
+              </div>`;
+          })()}
+
+          ${minhasPartidas.length > 0 ? `
+            <h2 style="margin: 36px 0 16px;">Minhas partidas</h2>
+            <div class="fixture-list">
+              ${minhasPartidas.map(p => {
+                const concluida = p.status === 'concluida';
+                const ehJogadorA = p.jogadorA === ins.id;
+                const meuPlacar = ehJogadorA ? p.placarA : p.placarB;
+                const advPlacar = ehJogadorA ? p.placarB : p.placarA;
+                const venci = concluida && meuPlacar > advPlacar;
+                const empate = concluida && meuPlacar === advPlacar;
+                const advId = ehJogadorA ? p.jogadorB : p.jogadorA;
+                const advNome = nomeDe(advId);
+                return `
+                  <article class="match-card ${concluida ? '' : 'match-pending'}">
+                    <p class="match-time">${({
+                      grupos: 'Fase de Grupos',
+                      oitavas: 'Oitavas',
+                      quartas: 'Quartas',
+                      semi: 'Semifinal',
+                      final: 'Final'
+                    })[p.fase] || p.fase}</p>
+                    <div class="match-row ${venci ? 'winner' : ''}">
+                      <span class="player">🎮 Você</span>
+                      <span class="score">${concluida ? meuPlacar : '–'}</span>
+                    </div>
+                    <div class="match-row">
+                      <span class="player">${escapeHtml(advNome)}</span>
+                      <span class="score">${concluida ? advPlacar : '–'}</span>
+                    </div>
+                    ${concluida ? `<p style="margin-top: 10px; font-size: 13px; font-weight: 600; color: ${venci ? 'var(--verde-escuro)' : (empate ? 'var(--ambar-principal)' : '#C62828')};">${venci ? '🏆 Vitória!' : (empate ? '🤝 Empate' : 'Resultado registrado')}</p>` : ''}
+                  </article>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+
+          <div class="form-card" style="margin-top: 36px; background: var(--amarelo-claro);">
+            <h3 style="margin-bottom: 10px;">🔐 Sua conta</h3>
+            <p style="color: var(--texto-medio); margin-bottom: 14px; font-size: 14px;">Você tem permissão de <strong>usuário</strong>. Pode ver seus dados, seu grupo e suas partidas — mas não pode alterar o evento ou os dados de outros participantes.</p>
+            <button class="btn btn-outline btn-sm" id="btnTrocarSenha">Trocar minha senha</button>
+          </div>
+
+          <!-- MODAL TROCA SENHA -->
+          <div class="modal-backdrop" id="modalSenha" style="position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; place-items: center; z-index: 2000; padding: 20px;">
+            <div class="form-card" style="max-width: 420px;">
+              <h3 style="margin-bottom: 14px;">Trocar senha</h3>
+              <form id="formSenha">
+                <div class="form-group">
+                  <label for="senhaAtual">Senha atual</label>
+                  <input type="password" id="senhaAtual" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="senhaNova">Nova senha (mín. 8 caracteres)</label>
+                  <input type="password" id="senhaNova" class="form-control" required minlength="8" maxlength="128">
+                </div>
+                <p class="form-error" id="erroSenha"></p>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                  <button type="button" class="btn btn-outline btn-sm" id="cancelSenha">Cancelar</button>
+                  <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('btnSair').addEventListener('click', async () => {
+          await Data.logout();
+          AppUtils.showToast('Você saiu da sua conta.');
+          setTimeout(() => location.href = 'index.html', 400);
+        });
+
+        // ===== Polling em tempo real =====
+        // A cada 5 segundos, verifica se o admin ja sorteou o grupo.
+        // Se mudou, atualiza a tela SEM precisar recarregar.
+        let _grupoIdAtual = grupoId;
+        let _partidasIdsAtual = minhasPartidas.map(p => p.id).sort().join(',');
+
+        async function verificarAtualizacoes() {
+          if (document.hidden) return;  // economiza recursos quando aba esta em background
+          try {
+            const novoPerfil = await Api.me();
+            const novoGrupoId = novoPerfil.inscricao?.grupo_id;
+            // Mudou o grupo?
+            if (novoGrupoId !== _grupoIdAtual) {
+              _grupoIdAtual = novoGrupoId;
+              // Re-renderiza a pagina inteira para refletir o novo estado
+              AppUtils.showToast('🎉 Seu grupo foi sorteado!');
+              setTimeout(() => location.reload(), 800);
+              return;
+            }
+            // Verifica se novas partidas foram geradas/atualizadas
+            const todas = await Data.listPartidas();
+            const minhas = todas.filter(p =>
+              p.jogadorA === ins.id || p.jogadorB === ins.id
+            );
+            const novosIds = minhas.map(p => p.id).sort().join(',');
+            if (novosIds !== _partidasIdsAtual) {
+              _partidasIdsAtual = novosIds;
+              location.reload();
+            }
+          } catch (err) {
+            // Servidor offline: ignora silenciosamente, tenta de novo no proximo tick
+          }
+        }
+
+        // Polling a cada 5 segundos. setInterval automatico ao carregar.
+        const intervalPolling = setInterval(verificarAtualizacoes, 5000);
+        // Limpa o interval ao sair da pagina
+        window.addEventListener('beforeunload', () => clearInterval(intervalPolling));
+
+        const modal = document.getElementById('modalSenha');
+        document.getElementById('btnTrocarSenha').addEventListener('click', () => {
+          modal.style.display = 'grid';
+        });
+        document.getElementById('cancelSenha').addEventListener('click', () => {
+          modal.style.display = 'none';
+        });
+        document.getElementById('formSenha').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const atual = document.getElementById('senhaAtual').value;
+          const nova = document.getElementById('senhaNova').value;
+          const erro = document.getElementById('erroSenha');
+          erro.classList.remove('show');
+          try {
+            await Api.trocarSenha(atual, nova);
+            AppUtils.showToast('Senha alterada! Faça login novamente.');
+            setTimeout(async () => {
+              await Data.logout();
+              location.href = 'login.html';
+            }, 800);
+          } catch (err) {
+            erro.textContent = err.message;
+            erro.classList.add('show');
+          }
+        });
+
+      } catch (err) {
+        if (err.status === 401) {
+          await Data.logout();
+          location.href = 'login.html';
+        } else {
+          wrap.innerHTML = `<div class="form-card"><p>Não foi possível carregar seus dados: ${escapeHtml(err.message)}</p></div>`;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

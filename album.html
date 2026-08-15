@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Álbum de figurinhas do Campeonato Digital — todos os participantes, organizados por seleção.">
+  <meta name="theme-color" content="#2E7D32">
+  <title>Álbum de Figurinhas — Copa AVOSOS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div data-header></div>
+
+  <main id="main">
+    <section class="page-header">
+      <div class="container">
+        <h1>Álbum de Figurinhas</h1>
+        <p>Cada criança vira uma figurinha colecionável! Veja todos os craques do nosso campeonato.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div id="albumContainer"></div>
+
+        <div class="form-card" style="margin-top: 40px; background: var(--amarelo-claro); max-width: 720px;">
+          <h3 style="color: var(--verde-escuro); display: flex; align-items: center; gap: 10px;">
+            <span aria-hidden="true">📱</span> Coleta presencial via QR Code
+          </h3>
+          <p>No dia do evento, cada participante recebe um crachá com QR code próprio. Ao escanear o crachá de um amigo, a figurinha dele entra no seu álbum. É uma forma divertida de conhecer todo mundo — a tecnologia aproximando pessoas, não substituindo o encontro real!</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div data-footer></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/album.js"></script>
+</body>
+</html>

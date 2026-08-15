@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local runtime data, exports and secrets
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+*.sql
+*.dump
+*.log
+*.csv
+*.zip
+*.7z
+*.rar
+backups/
+backup*/
+exports/
+logs/
+.env
+.env.*
+!.env.example
+
+# Test and tool caches
+.pytest_cache/
+.coverage

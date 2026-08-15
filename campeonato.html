@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Acompanhe os grupos, jogos, classificação e Prêmio Fair Play da Copa AVOSOS.">
+  <meta name="theme-color" content="#2E7D32">
+  <title>O Campeonato — Copa AVOSOS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div data-header></div>
+
+  <main id="main">
+    <section class="page-header">
+      <div class="container">
+        <h1>O Campeonato</h1>
+        <p>Tudo sobre os grupos, jogos, classificação e o Prêmio Fair Play do nosso torneio inspirado na Copa do Mundo.</p>
+      </div>
+    </section>
+
+    <!-- FORMATO E REGRAS -->
+    <section class="section">
+      <div class="container">
+        <div class="form-card" style="max-width: 860px;">
+          <h2 style="color: var(--verde-escuro);">Como funciona</h2>
+          <p>Nosso campeonato é de <strong>futebol em videogame (FIFA/EAFC)</strong>, jogado em partidas individuais ou em duplas — depende de quantos jogadores se inscreverem.</p>
+          <p><strong>Fase de grupos:</strong> os participantes são distribuídos em grupos de 4 a 6, cada um representando uma seleção (Brasil, Argentina, Portugal, Japão...).</p>
+          <p><strong>Eliminatórias:</strong> os 2 melhores de cada grupo seguem para as oitavas. Depois vêm quartas de final, semifinal e a grande final — igualzinho a uma Copa do Mundo de verdade!</p>
+          <p style="margin-bottom: 0;"><strong>Todo mundo participa:</strong> mesmo quem não jogar pode torcer, jogar bingo, perguntas e respostas e o torneio de memória.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- GRUPOS -->
+    <section class="section section-cream">
+      <div class="container">
+        <div class="section-header">
+          <h2>Os Grupos da Copa</h2>
+          <p>Cada grupo é uma seleção. Veja quem representa cada bandeira e descubra em qual time você joga!</p>
+        </div>
+        <div class="groups-grid" id="gruposGrid"></div>
+      </div>
+    </section>
+
+    <!-- FIXTURE / TABELA -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>Tabela e Classificação</h2>
+          <p>Acompanhe os jogos em tempo real. As partidas são atualizadas pela equipe organizadora.</p>
+          <button class="btn btn-outline btn-sm no-print" onclick="window.print()" style="margin-top: 12px;">
+            🖨️ Imprimir / Salvar PDF
+          </button>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="grupos" role="tab">Fase de Grupos</button>
+          <button class="tab" data-tab="oitavas" role="tab">Oitavas</button>
+          <button class="tab" data-tab="quartas" role="tab">Quartas</button>
+          <button class="tab" data-tab="semi" role="tab">Semifinal</button>
+          <button class="tab" data-tab="final" role="tab">Final</button>
+        </div>
+
+        <div class="tab-content active" data-tab-content="grupos">
+          <div id="classificacaoGrupos"></div>
+          <h3 style="margin: 30px 0 16px;">Partidas da fase de grupos</h3>
+          <div class="fixture-list" id="partidasGrupos">
+            <p class="empty-state">As partidas serão exibidas assim que o cronograma for divulgado.</p>
+          </div>
+        </div>
+
+        <div class="tab-content" data-tab-content="oitavas">
+          <div class="fixture-list" id="partidasOitavas">
+            <p class="empty-state">As oitavas começam após o fim da fase de grupos. Volte logo mais!</p>
+          </div>
+        </div>
+        <div class="tab-content" data-tab-content="quartas">
+          <div class="fixture-list" id="partidasQuartas">
+            <p class="empty-state">Em breve...</p>
+          </div>
+        </div>
+        <div class="tab-content" data-tab-content="semi">
+          <div class="fixture-list" id="partidasSemi">
+            <p class="empty-state">Em breve...</p>
+          </div>
+        </div>
+        <div class="tab-content" data-tab-content="final">
+          <div class="fixture-list" id="partidasFinal">
+            <p class="empty-state">A grande final está chegando!</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAIR PLAY -->
+    <section class="section section-cream">
+      <div class="container">
+        <div class="section-header">
+          <h2>Prêmio Fair Play</h2>
+          <p>Reconhecimento diário para quem demonstra espírito esportivo, gentileza e superação.</p>
+        </div>
+        <div id="fairPlayContainer"></div>
+      </div>
+    </section>
+
+    <!-- PRÓXIMAS PARTIDAS -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>Próximas partidas</h2>
+          <p>Fique de olho — não perca a sua hora de jogar!</p>
+        </div>
+        <div class="fixture-list" id="proximasPartidas">
+          <p class="empty-state">Sem partidas agendadas no momento.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div data-footer></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/campeonato.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Entre na sua área pessoal da Copa AVOSOS.">
+  <meta name="theme-color" content="#2E7D32">
+  <title>Entrar — Copa AVOSOS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div data-header></div>
+
+  <main id="main">
+    <section class="page-header">
+      <div class="container">
+        <h1>Entrar na minha área</h1>
+        <p>Acesse sua conta para ver seu grupo, seus jogos e sua figurinha personalizada.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <form class="form-card" id="formLogin" novalidate style="max-width: 480px;">
+          <div class="form-group">
+            <label for="username">Nome de usuário <span aria-hidden="true" style="color:#C62828;">*</span>
+              <span class="label-hint">O mesmo que você escolheu na inscrição.</span>
+            </label>
+            <input type="text" id="username" name="username" class="form-control" required autocomplete="username" autocapitalize="none" spellcheck="false">
+            <p class="form-error" data-error-for="username">Informe seu nome de usuário.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Senha <span aria-hidden="true" style="color:#C62828;">*</span></label>
+            <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password">
+            <p class="form-error" data-error-for="password">Informe sua senha.</p>
+          </div>
+
+          <p class="form-error" id="erroGeral"></p>
+
+          <button type="submit" class="btn btn-primary btn-large" style="width: 100%;">
+            <span aria-hidden="true">🔓</span> Entrar
+          </button>
+
+          <p style="text-align: center; margin-top: 22px; font-size: 14px;">
+            Ainda não tem cadastro? <a href="inscricao.html">Criar minha inscrição →</a>
+          </p>
+          <p style="text-align: center; margin-top: 12px; font-size: 13px; color: var(--texto-medio);">
+            É da equipe organizadora? <a href="admin/">Entrar como administrador →</a>
+          </p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <div data-footer></div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    // Se ja esta logado, redireciona
+    document.addEventListener('DOMContentLoaded', () => {
+      if (Data.isLogged()) {
+        const u = Data.getUser();
+        if (u && u.role === 'admin') {
+          location.href = 'admin/';
+        } else {
+          location.href = 'minha-area.html';
+        }
+      }
+    });
+
+    // Normaliza username em lowercase enquanto digita
+    document.getElementById('username').addEventListener('input', e => {
+      e.target.value = e.target.value.toLowerCase().replace(/\s+/g, '');
+    });
+
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const erroGeral = document.getElementById('erroGeral');
+      erroGeral.classList.remove('show');
+
+      const username = document.getElementById('username').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        erroGeral.textContent = 'Preencha usuário e senha.';
+        erroGeral.classList.add('show');
+        return;
+      }
+
+      const r = await Data.login(username, password);
+      if (r.ok) {
+        AppUtils.showToast('Bem-vindo de volta! 🎉');
+        setTimeout(() => {
+          if (r.role === 'admin') {
+            location.href = 'admin/';
+          } else {
+            location.href = 'minha-area.html';
+          }
+        }, 300);
+      } else {
+        erroGeral.textContent = r.message || 'Usuário ou senha inválidos.';
+        erroGeral.classList.add('show');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2E7D32">
+  <title>Painel Admin — Copa AVOSOS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚽%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body class="admin-body">
+  <!-- TELA DE LOGIN -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo" aria-hidden="true">⚽</div>
+      <h1>Painel Administrativo</h1>
+      <p class="login-sub">Copa AVOSOS — Equipe organizadora</p>
+      <form id="formLogin" style="text-align: left;">
+        <div class="form-group">
+          <label for="loginUser">Usuário</label>
+          <input type="text" id="loginUser" class="form-control" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="loginPass">Senha</label>
+          <input type="password" id="loginPass" class="form-control" required autocomplete="current-password">
+        </div>
+        <p class="form-error" id="loginErr"></p>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Entrar</button>
+      </form>
+      <p style="margin-top: 20px; font-size: 14px;">
+        <a href="../index.html">← Voltar ao site público</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- LAYOUT ADMIN -->
+  <div class="admin-layout" id="adminLayout" hidden>
+    <aside class="admin-sidebar" aria-label="Menu lateral">
+      <div class="sidebar-brand">
+        <span aria-hidden="true">⚽</span>
+        <div>
+          <div>Admin</div>
+          <small style="font-weight: 400; font-size: 12px; opacity: 0.7;">AVOSOS</small>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#dashboard" data-section="dashboard" class="active"><span aria-hidden="true">📊</span> Painel</a>
+        <a href="#inscricoes" data-section="inscricoes"><span aria-hidden="true">📝</span> Inscrições</a>
+        <a href="#grupos" data-section="grupos"><span aria-hidden="true">👥</span> Grupos</a>
+        <a href="#partidas" data-section="partidas"><span aria-hidden="true">⚽</span> Partidas</a>
+        <a href="#chaveamento" data-section="chaveamento"><span aria-hidden="true">🏆</span> Chaveamento</a>
+        <a href="#fairplay" data-section="fairplay"><span aria-hidden="true">🏅</span> Fair Play</a>
+        <a href="#classificacao" data-section="classificacao"><span aria-hidden="true">📋</span> Classificação</a>
+        <a href="#admins" data-section="admins"><span aria-hidden="true">🔐</span> Administradores</a>
+        <a href="#config" data-section="config"><span aria-hidden="true">⚙️</span> Configurações</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div id="indicadorPolling" style="font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 6px; display: none;">
+          🔄 Atualizando a cada 10s
+        </div>
+        Logado como <strong>admin</strong><br>
+        <button id="btnLogout">Sair</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <nav class="admin-mobile-nav" aria-label="Menu mobile admin">
+        <a href="#dashboard" data-section="dashboard" class="active">📊 Painel</a>
+        <a href="#inscricoes" data-section="inscricoes">📝 Inscrições</a>
+        <a href="#grupos" data-section="grupos">👥 Grupos</a>
+        <a href="#partidas" data-section="partidas">⚽ Partidas</a>
+        <a href="#chaveamento" data-section="chaveamento">🏆 Chaveamento</a>
+        <a href="#fairplay" data-section="fairplay">🏅 Fair Play</a>
+        <a href="#classificacao" data-section="classificacao">📋 Classificação</a>
+        <a href="#admins" data-section="admins">🔐 Admins</a>
+        <a href="#config" data-section="config">⚙️ Config</a>
+      </nav>
+
+      <!-- DASHBOARD -->
+      <section data-section-content="dashboard">
+        <div class="admin-topbar">
+          <h1>📊 Painel Principal</h1>
+          <div class="topbar-actions">
+            <a href="../index.html" class="btn btn-sm btn-outline" target="_blank">Ver site</a>
+          </div>
+        </div>
+        <div class="stat-grid" id="statGrid"></div>
+        <div class="admin-card">
+          <h2>⚠️ Alertas de atenção</h2>
+          <div id="alertas"></div>
+        </div>
+        <div class="admin-card">
+          <h2>🏅 Prêmio Fair Play atual</h2>
+          <div id="fairPlayResumo"></div>
+        </div>
+      </section>
+
+      <!-- INSCRIÇÕES -->
+      <section data-section-content="inscricoes" hidden>
+        <div class="admin-topbar">
+          <h1>📝 Gestão de Inscrições</h1>
+          <div class="topbar-actions">
+            <button class="btn btn-sm btn-outline" id="btnExportarCSV">⬇️ Exportar CSV</button>
+            <button class="btn btn-sm btn-green" id="btnNovaInscricao">+ Nova inscrição</button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <div class="filters-row">
+            <input type="search" class="form-control filter-search" id="buscaInscricao" placeholder="🔍 Buscar por nome ou WhatsApp...">
+            <select class="form-control" id="filtroGrupo">
+              <option value="">Todos os grupos</option>
+            </select>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Idade</th>
+                  <th>Responsável</th>
+                  <th>WhatsApp</th>
+                  <th>Grupo</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaInscricoes"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- GRUPOS -->
+      <section data-section-content="grupos" hidden>
+        <div class="admin-topbar">
+          <h1>👥 Gestão de Grupos</h1>
+          <div class="topbar-actions">
+            <button class="btn btn-sm btn-outline" id="btnDistribuirAleatorio">🎲 Distribuir aleatoriamente</button>
+            <button class="btn btn-sm btn-green" id="btnGerarPartidas">⚽ Gerar partidas dos grupos</button>
+          </div>
+        </div>
+
+        <!-- ADICIONAR NOVO GRUPO -->
+        <div class="admin-card">
+          <h2>➕ Adicionar nova seleção</h2>
+          <p style="color: var(--texto-medio); margin-bottom: 14px; font-size: 14px;">
+            Escolha uma seleção da lista — só selecções com bandeira disponível podem ser adicionadas.
+          </p>
+          <form id="formNovoGrupo" class="inline-form" style="background: var(--fundo-suave);">
+            <div class="form-group" style="margin: 0; flex: 2; min-width: 220px;">
+              <label style="font-size: 13px;">Seleção</label>
+              <select class="form-control" id="selectNovoGrupo" required>
+                <option value="">— Escolha uma seleção —</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0; min-width: 80px;">
+              <label style="font-size: 13px;">Preview</label>
+              <div id="previewBandeira" style="height: 42px; display: flex; align-items: center; padding: 0 8px;">
+                <span style="color: var(--texto-medio); font-size: 13px;">—</span>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-green">+ Adicionar grupo</button>
+          </form>
+          <p class="form-error" id="erroNovoGrupo"></p>
+        </div>
+
+        <div class="admin-card">
+          <h2>Grupos configurados</h2>
+          <div id="listaGrupos"></div>
+        </div>
+
+        <div class="admin-card">
+          <h2>Distribuir participantes manualmente</h2>
+          <p style="color: var(--texto-medio); margin-bottom: 16px;">Selecione o grupo de cada participante:</p>
+          <div id="distribuicaoManual"></div>
+        </div>
+      </section>
+
+      <!-- PARTIDAS -->
+      <section data-section-content="partidas" hidden>
+        <div class="admin-topbar">
+          <h1>⚽ Registro de Partidas</h1>
+        </div>
+
+        <div class="admin-card">
+          <div class="filters-row" style="align-items: end; flex-wrap: wrap;">
+            <div class="form-group" style="margin: 0; flex: 2; min-width: 240px;">
+              <label style="font-size: 13px;">Buscar participante</label>
+              <input type="search" class="form-control" id="filtroPartidaBusca" placeholder="🔍 Nome do jogador A ou B...">
+            </div>
+            <div class="form-group" style="margin: 0; flex: 2; min-width: 220px;">
+              <label style="font-size: 13px;">Filtrar por inscrito</label>
+              <select class="form-control" id="filtroPartidaInscrito">
+                <option value="">Todos os participantes</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0; flex: 1; min-width: 160px;">
+              <label style="font-size: 13px;">Filtrar por status</label>
+              <select class="form-control" id="filtroPartidaStatus">
+                <option value="">Todas</option>
+                <option value="pendente">Pendentes</option>
+                <option value="concluida">Concluídas</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0; flex: 1; min-width: 160px;">
+              <label style="font-size: 13px;">Filtrar por fase</label>
+              <select class="form-control" id="filtroPartidaFase">
+                <option value="">Todas as fases</option>
+                <option value="grupos">Fase de grupos</option>
+                <option value="oitavas">Oitavas</option>
+                <option value="quartas">Quartas</option>
+                <option value="semi">Semifinal</option>
+                <option value="final">Final</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <button type="button" class="btn btn-outline btn-sm" id="btnLimparFiltrosPartidas" title="Limpar filtros">
+                ✖️ Limpar
+              </button>
+            </div>
+          </div>
+          <p id="contadorPartidas" style="margin: 12px 0 0; font-size: 13px; color: var(--texto-medio);"></p>
+          <div id="listaPartidas"></div>
+        </div>
+      </section>
+
+      <!-- CHAVEAMENTO -->
+      <section data-section-content="chaveamento" hidden>
+        <div class="admin-topbar">
+          <h1>🏆 Geração de Chaveamento</h1>
+        </div>
+        <div class="admin-card">
+          <p>Após concluir todas as partidas da fase de grupos, gere automaticamente o chaveamento das eliminatórias. O sistema pega os 2 melhores de cada grupo (por pontos, saldo de gols, gols marcados) e <strong>sorteia os pareamentos</strong> — não é mais determinístico.</p>
+          <p style="background: var(--amarelo-claro); padding: 12px; border-radius: 8px; font-size: 14px; color: var(--texto-medio);">
+            💡 <strong>Como funciona:</strong> ao terminar uma fase (oitavas, quartas, etc), clique <strong>de novo</strong> neste botão — o sistema detecta quantos vencedores existem e gera a próxima fase automaticamente.
+          </p>
+          <p><strong>⚠️ Atenção:</strong> a geração substitui qualquer chaveamento eliminatório existente.</p>
+          <div id="statusFaseGrupos" style="margin: 18px 0;"></div>
+          <button class="btn btn-primary" id="btnGerarChaveamento">🏆 Gerar próxima fase</button>
+        </div>
+        <div class="admin-card">
+          <h2>Chaveamento atual</h2>
+          <div id="chaveamentoAtual"></div>
+        </div>
+      </section>
+
+      <!-- FAIR PLAY -->
+      <section data-section-content="fairplay" hidden>
+        <div class="admin-topbar">
+          <h1>🏅 Prêmio Fair Play</h1>
+        </div>
+        <div class="admin-card">
+          <p>Registre o vencedor do Prêmio Fair Play do dia. Esse reconhecimento aparece em destaque na página do Campeonato.</p>
+          <form id="formFairPlay" style="margin-top: 18px;">
+            <div class="form-group">
+              <label for="fpNome">Nome do vencedor</label>
+              <input type="text" id="fpNome" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="fpMotivo">Motivo do reconhecimento</label>
+              <textarea id="fpMotivo" class="form-control" rows="3" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Fair Play</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- CLASSIFICAÇÃO -->
+      <section data-section-content="classificacao" hidden>
+        <div class="admin-topbar">
+          <h1>📋 Classificação</h1>
+          <div class="topbar-actions">
+            <button class="btn btn-sm btn-outline" onclick="window.print()">🖨️ Imprimir / PDF</button>
+          </div>
+        </div>
+        <p style="color: var(--texto-medio); margin-bottom: 16px;">
+          Tabelas de classificação por grupo atualizadas em tempo real. Os dois primeiros colocados de cada grupo avançam para as eliminatórias.
+        </p>
+        <div id="classificacaoAdmin"></div>
+      </section>
+
+      <!-- ADMINISTRADORES -->
+      <section data-section-content="admins" hidden>
+        <div class="admin-topbar">
+          <h1>🔐 Administradores</h1>
+        </div>
+        <div class="admin-card">
+          <h2>Criar novo administrador</h2>
+          <p style="color: var(--texto-medio); margin-bottom: 16px;">Administradores têm acesso total ao painel e a todas as operações do evento.</p>
+          <form id="formNovoAdmin" class="inline-form" style="background: var(--fundo-suave);">
+            <div class="form-group">
+              <label>Nome de usuário</label>
+              <input type="text" id="novoAdminUser" class="form-control" required minlength="3" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Senha (mín. 12 caracteres)</label>
+              <input type="password" id="novoAdminSenha" class="form-control" required minlength="12" maxlength="128" autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-sm btn-green">+ Criar administrador</button>
+          </form>
+          <p class="form-error" id="erroNovoAdmin"></p>
+        </div>
+
+        <div class="admin-card">
+          <h2>Administradores existentes <span class="badge-pill" id="badgeQtdAdmins" style="font-size: 12px;">0</span></h2>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr><th>Usuário</th><th>Criado em</th><th>Status</th><th>Ações</th></tr>
+              </thead>
+              <tbody id="tabelaAdmins"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <h2>Usuários cadastrados (participantes) <span class="badge-pill" id="badgeQtdUsers" style="font-size: 12px;">0</span></h2>
+          <p style="color: var(--texto-medio); margin-bottom: 14px;">Contas criadas automaticamente quando uma inscrição é feita (role = <code>user</code>). Esses usuários têm acesso apenas à própria área pessoal.</p>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr><th>WhatsApp</th><th>Inscrição vinculada</th><th>Criada em</th></tr>
+              </thead>
+              <tbody id="tabelaUsers"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONFIGURAÇÕES -->
+      <section data-section-content="config" hidden>
+        <div class="admin-topbar">
+          <h1>⚙️ Configurações do Evento</h1>
+        </div>
+        <div class="admin-card">
+          <form id="formConfig">
+            <div class="form-group">
+              <label for="cfgNome">Nome do evento</label>
+              <input type="text" id="cfgNome" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="cfgHomenagem">Homenagem</label>
+              <input type="text" id="cfgHomenagem" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="cfgData">Data e hora do evento</label>
+              <input type="datetime-local" id="cfgData" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="cfgLocal">Local</label>
+              <input type="text" id="cfgLocal" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="cfgGrupos">Seleções disponíveis (uma por linha)</label>
+              <textarea id="cfgGrupos" class="form-control" rows="6"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="cfgWhats">WhatsApp de contato (só números)</label>
+              <input type="tel" id="cfgWhats" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="cfgEmail">E-mail de contato</label>
+              <input type="email" id="cfgEmail" class="form-control">
+            </div>
+            <div class="checkbox-group" style="margin: 22px 0;">
+              <input type="checkbox" id="cfgInscricoes">
+              <label for="cfgInscricoes">Inscrições abertas</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar configurações</button>
+          </form>
+        </div>
+        <div class="admin-card" style="border-left: 4px solid #C62828;">
+          <h2 style="color: #C62828;">Zona de perigo</h2>
+          <p>Resetar todos os dados (inscrições, grupos, partidas e configurações) — use apenas em testes.</p>
+          <button class="btn btn-danger" id="btnResetar" style="margin-top: 12px;">🗑️ Resetar tudo</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL CONFIRMAÇÃO -->
+  <div class="modal-backdrop" id="modalConfirma">
+    <div class="modal">
+      <h3 id="modalTitle">Confirmar ação</h3>
+      <p id="modalText">Tem certeza?</p>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="modalCancel">Cancelar</button>
+        <button class="btn btn-danger" id="modalOk">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PARTIDA -->
+  <div class="modal-backdrop" id="modalPartida">
+    <div class="modal" style="max-width: 460px;">
+      <h3>Registrar resultado</h3>
+      <p id="modalPartidaInfo" style="margin-bottom: 18px;"></p>
+      <form id="formPartida">
+        <div style="display: flex; gap: 14px; align-items: center; justify-content: center;">
+          <div>
+            <label id="lblJogadorA" style="font-weight: 600;"></label>
+            <input type="number" id="placarA" class="form-control" min="0" max="99" required style="width: 90px; text-align: center; font-size: 24px;">
+          </div>
+          <div style="font-size: 28px; font-weight: 700;">×</div>
+          <div>
+            <label id="lblJogadorB" style="font-weight: 600;"></label>
+            <input type="number" id="placarB" class="form-control" min="0" max="99" required style="width: 90px; text-align: center; font-size: 24px;">
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top: 22px;">
+          <button type="button" class="btn btn-outline" id="cancelPartida">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar resultado</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/storage.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/main.js"></script>
+  <script src="../js/admin.js"></script>
+</body>
+</html>
