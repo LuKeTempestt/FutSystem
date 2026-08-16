@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/LuKeTempestt/FutSystem/actions/workflows/ci.yml/badge.svg)](https://github.com/LuKeTempestt/FutSystem/actions/workflows/ci.yml)
 
+**Aplicação em produção:** [futsystem.vercel.app](https://futsystem.vercel.app) · **API REST:** [documentação interativa](https://futsystem.vercel.app/api/docs)
+
 Sistema completo para o **Campeonato de Futebol Digital da AVOSOS** (Aracaju/SE), projeto de extensão da **Turma GP0161NOT03A — Universidade Tiradentes (UNIT)** em parceria com a **AVOSOS — Associação dos Voluntários a Serviço da Oncologia em Sergipe**.
 
 Site público, painel administrativo e API no mesmo projeto. Em produção, a aplicação roda na **Vercel** com persistência em **PostgreSQL no Neon**; localmente, funciona com SQLite sem configuração adicional.
