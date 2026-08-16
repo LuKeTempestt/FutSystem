@@ -6,6 +6,12 @@
       "includeFiles": "{*.html,admin/**,css/**,js/**,manifest.json,service-worker.js}"
     }
   },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
