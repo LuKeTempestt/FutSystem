@@ -3,14 +3,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 30,
-      "includeFiles": [
-        "*.html",
-        "admin/**",
-        "css/**",
-        "js/**",
-        "manifest.json",
-        "service-worker.js"
-      ]
+      "includeFiles": "{*.html,admin/**,css/**,js/**,manifest.json,service-worker.js}"
     }
   },
   "headers": [
