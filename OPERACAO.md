@@ -360,9 +360,9 @@ Botão **🗑️ Resetar tudo** — apaga inscrições, grupos, partidas e Fair 
 
 ## 13. Backup e segurança dos dados
 
-### O arquivo do banco
+### Onde os dados ficam
 
-Tudo está em **`backend/futsystem.db`**. Esse arquivo SQLite contém:
+Em produção, os dados ficam no **PostgreSQL do Neon**. No desenvolvimento local, ficam em **`backend/futsystem.db`**. O banco ativo contém:
 - Inscrições
 - Usuários (admins + users)
 - Grupos
@@ -378,10 +378,14 @@ Tudo está em **`backend/futsystem.db`**. Esse arquivo SQLite contém:
 
 ### Como fazer backup
 
+**Produção (Neon):** use os recursos de backup e restauração do provedor. Antes de uma alteração importante, crie um ponto de recuperação e valide o procedimento de restauração.
+
+**Ambiente local (SQLite):**
+
 1. Pare o servidor com Ctrl+C ou feche a janela do prompt.
 2. Copie `backend/futsystem.db` para um arquivo ou volume criptografado.
 3. Armazene-o em espaço controlado pela organização, com MFA e acesso mínimo.
-4. Guarde a chave de criptografia separadamente, verifique a restauração e reinicie o servidor.
+4. Guarde a chave de criptografia separadamente e verifique a restauração.
 5. Aplique um prazo de retenção e elimine cópias antigas com segurança.
 
 > Não envie o banco por e-mail nem mantenha cópias sem criptografia em nuvem ou
@@ -389,15 +393,14 @@ Tudo está em **`backend/futsystem.db`**. Esse arquivo SQLite contém:
 
 ### Como restaurar
 
-1. Pare o servidor
-2. Substitua `backend/futsystem.db` pela versão antiga
-3. Reinicie o servidor
+- **Produção:** restaure o ponto de recuperação no Neon e valide contagens, autenticação e fluxos críticos antes de liberar novas alterações.
+- **Local:** pare o servidor, substitua `backend/futsystem.db` pela cópia validada e reinicie.
 
 ### Segurança das senhas
 
 - Senhas são guardadas com **bcrypt e salt individual** — não em texto puro
 - O bcrypt dificulta ataques offline, mas não torna senhas fracas irrecuperáveis; proteja o banco como dado sensível
-- Tokens de login expiram quando o servidor é reiniciado
+- Tokens expiram no prazo configurado e podem ser revogados; reiniciar a Vercel não substitui o segredo JWT
 - Confirme a senha do administrador e guarde-a em um gerenciador de senhas
 
 ---
@@ -414,9 +417,9 @@ Gere o QR Code apenas depois de confirmar o certificado HTTPS e o endereço fina
 
 ### Já tenho inscritos. Preciso desligar o computador. E aí?
 
-- Tudo bem desligar — os dados ficam salvos no `futsystem.db`
-- Antes, crie um backup consistente em um arquivo ou volume criptografado e com acesso restrito
-- Quando religar e rodar `start.bat` de novo, tudo volta como estava
+- Em produção, desligar o computador local não afeta a aplicação: os dados permanecem no Neon
+- No ambiente local, os dados ficam em `futsystem.db`; faça uma cópia consistente e protegida antes de interromper operações críticas
+- Ao executar `start.bat` novamente, o ambiente local reutiliza esse arquivo
 
 ### Como adicionar mais um grupo no meio do campeonato?
 

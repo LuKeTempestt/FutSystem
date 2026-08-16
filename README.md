@@ -1,8 +1,13 @@
-# Copa AVOSOS — Campeonato de Futebol Digital
+# FutSystem
 
 [![CI](https://github.com/LuKeTempestt/FutSystem/actions/workflows/ci.yml/badge.svg)](https://github.com/LuKeTempestt/FutSystem/actions/workflows/ci.yml)
+[![Produção](https://img.shields.io/badge/produção-online-0A66C2)](https://futsystem.vercel.app)
+[![API](https://img.shields.io/badge/API-FastAPI-009688)](https://futsystem.vercel.app/api/docs)
+[![Banco](https://img.shields.io/badge/PostgreSQL-Neon-00E599)](https://neon.com/)
 
-**Aplicação em produção:** [futsystem.vercel.app](https://futsystem.vercel.app) · **API REST:** [documentação interativa](https://futsystem.vercel.app/api/docs)
+**Sistema full stack para gestão do Campeonato de Futebol Digital da AVOSOS.** Centraliza inscrições, autenticação, grupos, partidas, classificação, chaveamento e administração do evento.
+
+[Aplicação em produção](https://futsystem.vercel.app) · [Documentação interativa da API](https://futsystem.vercel.app/api/docs)
 
 Sistema completo para o **Campeonato de Futebol Digital da AVOSOS** (Aracaju/SE), projeto de extensão da **Turma GP0161NOT03A — Universidade Tiradentes (UNIT)** em parceria com a **AVOSOS — Associação dos Voluntários a Serviço da Oncologia em Sergipe**.
 
@@ -12,6 +17,14 @@ Site público, painel administrativo e API no mesmo projeto. Em produção, a ap
 > Desenvolvido na disciplina **Experiência Extensionista I** do curso de Análise e Desenvolvimento de Sistemas da UNIT.
 
 ![Página inicial do FutSystem](docs/screenshots/home.png)
+
+## Como avaliar o projeto
+
+1. Acesse a [aplicação em produção](https://futsystem.vercel.app) e conheça as páginas públicas do campeonato.
+2. Consulte a [API no Swagger](https://futsystem.vercel.app/api/docs) para ver contratos, validações e rotas disponíveis.
+3. Revise abaixo as decisões de arquitetura, segurança, persistência e qualidade.
+
+Cadastros e operações administrativas exigem código de convite ou credenciais. Esses segredos não são publicados no repositório.
 
 ## O problema e a solução
 
@@ -35,7 +48,7 @@ restritas ao painel administrativo.
 - **Privacidade:** contatos ficam na área administrativa; páginas públicas usam nome reduzido
 - **Persistência:** PostgreSQL no Neon em produção e SQLite no desenvolvimento local
 - **Deploy:** FastAPI serverless e front-end estático publicados juntos na Vercel
-- **Qualidade:** testes automatizados e CI no GitHub Actions
+- **Qualidade:** 25 testes automatizados e CI no GitHub Actions
 
 ```mermaid
 flowchart LR
@@ -205,7 +218,7 @@ python -m pip install -r backend/requirements-dev.txt
 python -m unittest discover -s backend/tests -v
 ```
 
-O mesmo conjunto é executado automaticamente pelo GitHub Actions em cada pull request e atualização da `main`.
+Os 25 testes são executados automaticamente pelo GitHub Actions em cada pull request e atualização da `main`.
 
 ### Publicação na Vercel com Neon
 
@@ -295,4 +308,5 @@ são licenciados para reutilização pela licença do código.
 - 🔧 Para instalar: leia **[INSTALACAO.md](INSTALACAO.md)**
 - 🎮 Para usar no dia do evento: leia **[OPERACAO.md](OPERACAO.md)**
 - 💻 Para entender o código / API: leia **[backend/README.md](backend/README.md)**
-- 📖 Documentação interativa da API: rode o servidor e acesse `http://localhost:8001/api/docs`
+- 📖 API em produção: [futsystem.vercel.app/api/docs](https://futsystem.vercel.app/api/docs)
+- 🧪 API local: rode o servidor e acesse `http://localhost:8001/api/docs`

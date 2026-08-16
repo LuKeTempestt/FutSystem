@@ -51,14 +51,15 @@ Este guia explica **a lógica por trás do código** e mostra **cenários comuns
 │       ↓                                                                  │
 │   crud.py:                                                               │
 │       ins = Inscricao(...)                                               │
-│       db.add(ins); db.commit()  ◀── SQLAlchemy fala com SQLite          │
+│       db.add(ins); db.commit()  ◀── SQLAlchemy fala com o banco ativo   │
 │                                                                          │
 └──────────────────┬───────────────────────────────────────────────────────┘
                    │
                    ▼
-                ┌──────────────────────┐
-                │  futsystem.db        │  ← arquivo SQLite com TUDO
-                └──────────────────────┘
+                ┌─────────────────────────────────────────┐
+                │ PostgreSQL/Neon (produção)              │
+                │ SQLite/futsystem.db (desenvolvimento)   │
+                └─────────────────────────────────────────┘
 ```
 
 **Pontos-chave:**
@@ -66,7 +67,7 @@ Este guia explica **a lógica por trás do código** e mostra **cenários comuns
 - O front-end **não conhece SQL** — só fala JSON com a API
 - O back-end **não conhece HTML** — só serve JSON nas rotas `/api/*` e arquivos estáticos no resto
 - A camada `data.js` no front é uma **abstração** que decide se vai pra API ou pro localStorage (modo offline)
-- Tudo o que persiste fica num **único arquivo** (`futsystem.db`)
+- A persistência usa o banco selecionado por `DATABASE_URL`: **PostgreSQL no Neon** em produção e **SQLite** no desenvolvimento local
 
 ---
 
@@ -375,7 +376,7 @@ Usado em ações destrutivas: distribuir, gerar partidas, gerar chaveamento, res
 
 ### `backend/database.py`
 
-Cria a conexão SQLAlchemy. **Não precisa mexer aqui** a menos que troque de banco (de SQLite para PostgreSQL, por exemplo — só mudar a `DATABASE_URL`).
+Cria a conexão SQLAlchemy. Com `DATABASE_URL`, usa PostgreSQL; sem essa variável, usa o arquivo SQLite local `backend/futsystem.db`. Em produção, a Vercel recebe a URL agrupada do Neon.
 
 ### `backend/models.py`
 
@@ -389,7 +390,7 @@ class Inscricao(Base):
     presenca_confirmada: Mapped[bool] = mapped_column(Boolean, default=False)
 ```
 
-> ⚠️ SQLite não faz ALTER TABLE automaticamente. Para aplicar a nova coluna num banco existente, ou você apaga o `futsystem.db` (perde dados) ou usa Alembic (migração).
+> ⚠️ Alterar o modelo não migra automaticamente um banco existente. Em produção, faça backup e aplique uma migração versionada ou SQL controlado. Nunca apague o banco para atualizar o esquema.
 
 ### `backend/schemas.py`
 
@@ -798,10 +799,10 @@ Chamar em endpoints sensíveis (registrar placar, distribuir grupos, etc.).
 
 ### "Mudei o modelo mas o banco não atualizou"
 
-SQLite não migra automaticamente. Opções:
-- Apagar `futsystem.db` e recriar (perde dados)
-- Rodar `ALTER TABLE` manualmente via `sqlite3` CLI
-- Usar Alembic para migrações (não está configurado nesse projeto)
+SQLAlchemy não migra automaticamente um esquema existente. Opções:
+- Em produção (PostgreSQL/Neon), criar backup e aplicar uma migração versionada ou SQL revisado
+- Localmente (SQLite), usar uma cópia de teste antes de qualquer `ALTER TABLE`
+- Adotar Alembic para manter as próximas mudanças de esquema reproduzíveis
 
 ### "Funcionava ontem, hoje não"
 
@@ -811,6 +812,8 @@ SQLite não migra automaticamente. Opções:
 
 ### "Quero ver o banco direto"
 
+Para o banco SQLite local:
+
 ```bash
 sqlite3 backend/futsystem.db
 .tables
@@ -818,7 +821,7 @@ SELECT * FROM inscricoes;
 .quit
 ```
 
-Ou abra com DB Browser for SQLite (interface gráfica).
+Ou abra com DB Browser for SQLite. Em produção, use o console ou uma conexão segura do Neon, sem copiar credenciais para comandos, documentos ou histórico do terminal.
 
 ### "Mudei o JS mas o navegador não atualizou"
 
