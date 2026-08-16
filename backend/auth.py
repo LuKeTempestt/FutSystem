@@ -8,7 +8,7 @@ Niveis (roles):
 Recursos de seguranca:
   - Hash de senha com BCRYPT (custo 12) e salt individual.
   - Formatos legados nao sao aceitos no login; exigem rotacao ou redefinicao.
-  - Tokens Bearer com TTL (expira em 8 horas).
+  - JWTs assinados com TTL (expiram em 8 horas) e versao persistente.
   - Rate limit no login (5 tentativas a cada 60 segundos por IP).
 
 Dependencias do FastAPI expostas:
@@ -16,6 +16,7 @@ Dependencias do FastAPI expostas:
   - usuario_admin()    -> exige role='admin'. HTTP 403 se for user.
   - usuario_opcional() -> retorna o usuario se logado, ou None se publico.
 """
+import os
 import secrets
 import time
 from collections import deque
@@ -24,10 +25,13 @@ from threading import RLock
 from typing import Optional
 
 import bcrypt
+import jwt
 from fastapi import Depends, Header, HTTPException, Request, status
+from jwt import ExpiredSignatureError, InvalidTokenError
 from sqlalchemy.orm import Session
 
 from . import models
+from .database import get_db
 
 
 # =========================================================
@@ -36,7 +40,8 @@ from . import models
 
 # TTL do token: 8 horas (suficiente para uma jornada de evento)
 TOKEN_TTL_SECONDS = 8 * 60 * 60
-MAX_TOKENS_POR_USUARIO = 5
+JWT_ALGORITHM = "HS256"
+_DEV_JWT_SECRET = secrets.token_urlsafe(48)
 
 # Rate limit no /auth/login: max 5 tentativas em 60s por IP
 RATE_LIMIT_TENTATIVAS = 5
@@ -45,7 +50,7 @@ REGISTRO_RATE_LIMIT_TENTATIVAS = 10
 REGISTRO_RATE_LIMIT_JANELA_SEGUNDOS = 10 * 60
 
 # =========================================================
-# ESTRUTURAS EM MEMORIA
+# IDENTIDADE AUTENTICADA E RATE LIMIT LOCAL
 # =========================================================
 
 @dataclass
@@ -57,9 +62,6 @@ class UsuarioAuth:
     inscricao_id: Optional[int]
     expira_em: float  # timestamp UNIX
 
-
-# {token: UsuarioAuth}
-TOKENS_ATIVOS: dict[str, UsuarioAuth] = {}
 
 # {ip: deque([timestamps...])} para rate limit do login
 _RATE_LIMIT_LOGIN: dict[str, deque] = {}
@@ -98,52 +100,93 @@ def hash_precisa_migrar(hash_armazenado: str) -> bool:
 
 
 # =========================================================
-# TOKENS
+# JWT
 # =========================================================
 
-def criar_token(usuario: models.Usuario) -> str:
-    """Cria um token novo (256 bits) com TTL e armazena em memoria."""
-    with _STATE_LOCK:
-        _limpar_tokens_expirados()
-        tokens_do_usuario = [
-            (token, dados.expira_em)
-            for token, dados in TOKENS_ATIVOS.items()
-            if dados.id == usuario.id
-        ]
-        excedentes = max(0, len(tokens_do_usuario) - MAX_TOKENS_POR_USUARIO + 1)
-        for token, _ in sorted(tokens_do_usuario, key=lambda item: item[1])[:excedentes]:
-            TOKENS_ATIVOS.pop(token, None)
-        token = secrets.token_urlsafe(32)
-        TOKENS_ATIVOS[token] = UsuarioAuth(
-            id=usuario.id,
-            username=usuario.username,
-            role=usuario.role,
-            inscricao_id=usuario.inscricao_id,
-            expira_em=time.time() + TOKEN_TTL_SECONDS,
+def _jwt_secret() -> str:
+    """Retorna o segredo de assinatura sem permitir fallback na Vercel."""
+    segredo = os.getenv("FUTSYSTEM_JWT_SECRET")
+    if segredo:
+        if len(segredo) < 32:
+            raise RuntimeError(
+                "FUTSYSTEM_JWT_SECRET precisa ter ao menos 32 caracteres."
+            )
+        return segredo
+    if os.getenv("VERCEL"):
+        raise RuntimeError(
+            "Defina FUTSYSTEM_JWT_SECRET nos segredos do projeto Vercel."
         )
-        return token
+    return _DEV_JWT_SECRET
 
 
-def revogar_token(token: str) -> None:
-    with _STATE_LOCK:
-        TOKENS_ATIVOS.pop(token, None)
+def validar_configuracao_producao() -> None:
+    """Falha cedo quando a implantacao nao possui segredo de assinatura."""
+    _jwt_secret()
 
 
-def revogar_tokens_de(usuario_id: int) -> None:
-    """Revoga todos os tokens ativos de um usuario (uso: troca de senha, exclusao)."""
-    with _STATE_LOCK:
-        para_remover = [t for t, u in TOKENS_ATIVOS.items() if u.id == usuario_id]
-        for t in para_remover:
-            TOKENS_ATIVOS.pop(t, None)
+def criar_token(usuario: models.Usuario) -> str:
+    """Cria JWT assinado; estado de revogacao permanece no banco."""
+    agora = int(time.time())
+    expira_em = agora + TOKEN_TTL_SECONDS
+    payload = {
+        "sub": str(usuario.id),
+        "iat": agora,
+        "exp": expira_em,
+        "jti": secrets.token_urlsafe(16),
+        "ver": usuario.auth_versao,
+    }
+    return jwt.encode(payload, _jwt_secret(), algorithm=JWT_ALGORITHM)
 
 
-def _limpar_tokens_expirados() -> None:
-    """Remove tokens vencidos da memoria. Chamado pontualmente."""
-    with _STATE_LOCK:
-        agora = time.time()
-        expirados = [t for t, u in TOKENS_ATIVOS.items() if u.expira_em < agora]
-        for t in expirados:
-            TOKENS_ATIVOS.pop(t, None)
+def revogar_tokens_de(db: Session, usuario_id: int) -> None:
+    """Invalida todos os JWTs emitidos anteriormente para o usuario."""
+    usuario = db.get(models.Usuario, usuario_id)
+    if usuario:
+        usuario.auth_versao = (usuario.auth_versao or 0) + 1
+        db.flush()
+
+
+def _usuario_do_token(token: str, db: Session) -> UsuarioAuth:
+    """Valida assinatura, expiracao, conta atual e versao de revogacao."""
+    try:
+        payload = jwt.decode(
+            token,
+            _jwt_secret(),
+            algorithms=[JWT_ALGORITHM],
+            options={"require": ["sub", "iat", "exp", "jti", "ver"]},
+        )
+        usuario_id = int(payload["sub"])
+    except ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessao expirada. Faca login novamente.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+    except (InvalidTokenError, TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Autenticacao obrigatoria.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    usuario = db.get(models.Usuario, usuario_id)
+    if (
+        not usuario
+        or not usuario.ativo
+        or payload.get("ver") != usuario.auth_versao
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessao invalida. Faca login novamente.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return UsuarioAuth(
+        id=usuario.id,
+        username=usuario.username,
+        role=usuario.role,
+        inscricao_id=usuario.inscricao_id,
+        expira_em=float(payload["exp"]),
+    )
 
 
 # =========================================================
@@ -232,8 +275,8 @@ def garantir_admin_padrao(db: Session, senha_inicial: Optional[str]) -> bool:
         existe.senha_hash = gerar_hash(senha_inicial)
         existe.role = "admin"
         existe.ativo = True
+        revogar_tokens_de(db, existe.id)
         db.commit()
-        revogar_tokens_de(existe.id)
         return True
     admin = models.Usuario(
         username="admin",
@@ -255,26 +298,19 @@ def _extrair_token(authorization: Optional[str]) -> Optional[str]:
     return authorization.split(" ", 1)[1].strip()
 
 
-def usuario_atual(authorization: Optional[str] = Header(default=None)) -> UsuarioAuth:
+def usuario_atual(
+    authorization: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
+) -> UsuarioAuth:
     """Exige login (admin OU user). Valida TTL do token."""
-    _limpar_tokens_expirados()
     token = _extrair_token(authorization)
-    with _STATE_LOCK:
-        user = TOKENS_ATIVOS.get(token) if token else None
-    if not user:
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Autenticacao obrigatoria.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if user.expira_em < time.time():
-        revogar_token(token)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sessao expirada. Faca login novamente.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
+    return _usuario_do_token(token, db)
 
 
 def usuario_admin(user: UsuarioAuth = Depends(usuario_atual)) -> UsuarioAuth:
@@ -289,18 +325,16 @@ def usuario_admin(user: UsuarioAuth = Depends(usuario_atual)) -> UsuarioAuth:
 
 def usuario_opcional(
     authorization: Optional[str] = Header(default=None),
+    db: Session = Depends(get_db),
 ) -> Optional[UsuarioAuth]:
     """Retorna o usuario se houver token valido (e nao expirado), ou None."""
-    _limpar_tokens_expirados()
     token = _extrair_token(authorization)
     if not token:
         return None
-    with _STATE_LOCK:
-        user = TOKENS_ATIVOS.get(token)
-    if user and user.expira_em < time.time():
-        revogar_token(token)
+    try:
+        return _usuario_do_token(token, db)
+    except HTTPException:
         return None
-    return user
 
 
 def ip_do_request(request: Request) -> str:

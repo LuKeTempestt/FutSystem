@@ -4,7 +4,7 @@
 
 Sistema completo para o **Campeonato de Futebol Digital da AVOSOS** (Aracaju/SE), projeto de extensão da **Turma GP0161NOT03A — Universidade Tiradentes (UNIT)** em parceria com a **AVOSOS — Associação dos Voluntários a Serviço da Oncologia em Sergipe**.
 
-Site público + painel administrativo + API com banco de dados, tudo em **um único servidor**. A execução local é protegida por padrão; o acesso de outros dispositivos deve passar por HTTPS.
+Site público, painel administrativo e API no mesmo projeto. Em produção, a aplicação roda na **Vercel** com persistência em **PostgreSQL no Neon**; localmente, funciona com SQLite sem configuração adicional.
 
 > **Projeto acadêmico de impacto social · fevereiro a julho de 2026**<br>
 > Desenvolvido na disciplina **Experiência Extensionista I** do curso de Análise e Desenvolvimento de Sistemas da UNIT.
@@ -29,9 +29,10 @@ restritas ao painel administrativo.
 ### Decisões técnicas que o projeto demonstra
 
 - **Backend e regras de negócio:** FastAPI, Pydantic e SQLAlchemy
-- **Segurança:** autorização no servidor, tokens com expiração e limite por usuário
+- **Segurança:** autorização no servidor, JWT assinado com expiração e revogação persistente
 - **Privacidade:** contatos ficam na área administrativa; páginas públicas usam nome reduzido
-- **Operação simples:** SQLite e inicializadores para Windows, Linux e macOS
+- **Persistência:** PostgreSQL no Neon em produção e SQLite no desenvolvimento local
+- **Deploy:** FastAPI serverless e front-end estático publicados juntos na Vercel
 - **Qualidade:** testes automatizados e CI no GitHub Actions
 
 ```mermaid
@@ -40,7 +41,7 @@ flowchart LR
     Participante["Área do participante"] --> API
     Administrador["Painel administrativo"] --> API
     API --> Regras["Regras de negócio"]
-    Regras --> Banco["SQLite via SQLAlchemy"]
+    Regras --> Banco["PostgreSQL no Neon / SQLite local"]
 ```
 
 ---
@@ -72,9 +73,10 @@ flowchart LR
 | Camada | Tecnologia |
 |---|---|
 | Front-end | HTML5 + CSS3 + JavaScript vanilla (sem build, sem dependências) |
-| Back-end | **Python 3.10+ · FastAPI · SQLAlchemy 2.0** |
-| Banco | **SQLite** — arquivo local `backend/futsystem.db`, ignorado pelo Git |
-| Auth | Token Bearer em memória + sessão por aba + senhas bcrypt com salt individual |
+| Back-end | **Python 3.12 · FastAPI · SQLAlchemy 2.0** |
+| Banco | **PostgreSQL (Neon)** em produção · **SQLite** local |
+| Auth | JWT Bearer com revogação persistente · senhas bcrypt com salt individual |
+| Deploy | **Vercel Functions** com configuração versionada |
 | PWA | Manifest + Service Worker (cache offline) |
 | Acessibilidade | WCAG 2.2 AA |
 
@@ -116,6 +118,10 @@ FutSystem/
 │
 ├── manifest.json            # PWA manifest
 ├── service-worker.js        # Cache offline
+├── api/index.py             # Entrada serverless da Vercel
+├── vercel.json              # Função, arquivos estáticos e headers de segurança
+├── requirements.txt         # Dependências detectadas pela Vercel
+├── .env.example             # Variáveis necessárias, sem valores reais
 │
 ├── backend/                 # ⚙️ Servidor Python
 │   ├── main.py              # App FastAPI + todas as rotas
@@ -123,11 +129,12 @@ FutSystem/
 │   ├── models.py            # ORM: Grupo, Inscricao, Partida, Config, FairPlay, Usuario
 │   ├── schemas.py           # Pydantic — validação de I/O
 │   ├── crud.py              # Operações + regras de negócio
-│   ├── auth.py              # Hash de senha + tokens + dependências de role
+│   ├── auth.py              # bcrypt, JWT e dependências de role
+│   ├── request_protection.py # Limites de requisição antes do parsing
 │   ├── requirements.txt     # Dependências Python
 │   ├── run.py               # Atalho de inicialização
 │   ├── README.md            # Referência técnica do backend
-│   └── futsystem.db         # 💾 Banco SQLite gerado localmente (não versionado)
+│   └── futsystem.db         # Banco SQLite local (criado no 1º start)
 │
 ├── README.md                # 📖 Este arquivo
 ├── INSTALACAO.md            # 🔧 Como instalar
@@ -147,7 +154,8 @@ O sistema tem dois tipos de conta, cada uma com permissões diferentes:
 - **Não pode:** acessar o painel admin, modificar outros usuários, alterar o evento
 
 ### 🛡️ Administrador (`role = 'admin'`)
-- No primeiro start, a pessoa responsável escolhe a senha em uma entrada oculta no terminal
+- Localmente, a pessoa responsável escolhe a senha inicial em uma entrada oculta no terminal
+- Na Vercel, a senha inicial vem do segredo `FUTSYSTEM_ADMIN_PASSWORD`
 - A senha precisa ter entre 12 e 128 caracteres e nunca é exibida pelo sistema
 - Pode ser criado pelo painel admin (Seção 🔐 Administradores)
 - **Pode tudo:** gerenciar inscrições, grupos, partidas, chaveamento, Fair Play, criar outros admins, resetar dados, alterar configurações
@@ -197,6 +205,20 @@ python -m unittest discover -s backend/tests -v
 
 O mesmo conjunto é executado automaticamente pelo GitHub Actions em cada pull request e atualização da `main`.
 
+### Publicação na Vercel com Neon
+
+O projeto está preparado para uma única implantação: a Vercel executa o FastAPI e entrega o front-end; o Neon mantém os dados fora das instâncias serverless.
+
+Cadastre estas variáveis nos ambientes **Preview** e **Production** da Vercel:
+
+| Variável | Uso |
+|---|---|
+| `DATABASE_URL` | URL agrupada do Neon, com host `-pooler` e SSL |
+| `FUTSYSTEM_ADMIN_PASSWORD` | Senha inicial forte do administrador |
+| `FUTSYSTEM_JWT_SECRET` | Segredo aleatório com pelo menos 32 caracteres |
+
+Não publique valores reais no GitHub. O arquivo `.env.example` contém apenas o formato esperado.
+
 ### Acesso pela rede
 
 Por segurança, os scripts oficiais escutam somente em `127.0.0.1`. Para atender
@@ -208,20 +230,17 @@ tokens ou dados de participantes por HTTP aberto na rede Wi-Fi.
 
 ## 💾 Persistência dos dados
 
-**Tudo fica em um único arquivo local:** `backend/futsystem.db` (SQLite). O arquivo
-é ignorado pelo Git para impedir a publicação de dados pessoais e hashes de senha.
+Em produção, os dados ficam no PostgreSQL do Neon e sobrevivem a novas implantações e reinicializações da Vercel. Localmente, ficam em `backend/futsystem.db`; o arquivo é ignorado pelo Git para impedir a publicação de dados pessoais e hashes de senha.
 
 | Operação | Como fazer |
 |---|---|
-| 💾 Backup | Criar uma cópia consistente e armazená-la somente de forma criptografada e com acesso restrito |
-| 📥 Restaurar | Substituir `futsystem.db` no novo computador |
-| 🗑️ Resetar tudo | Apagar `futsystem.db` (com o servidor desligado) ou usar o botão "Resetar tudo" no painel |
-| 🚚 Mover para outro PC | Transferir o código e o backup criptografado por canais separados |
+| Local | Criar uma cópia consistente de `backend/futsystem.db`, criptografada e com acesso restrito |
+| Produção | Usar backup e restauração do Neon; nunca versionar exportações com dados pessoais |
+| Reset administrativo | Usar a operação protegida do painel apenas quando necessário |
 
 O banco contém dados pessoais e hashes de senha. Nunca o envie por e-mail nem o
-coloque sem criptografia em nuvem ou mídia removível. Use armazenamento controlado
-pela organização, MFA, acesso mínimo, prazo de retenção e exclusão segura. Guarde
-a chave de criptografia separadamente do backup.
+coloque sem criptografia em nuvem ou mídia removível. Use armazenamento controlado,
+MFA, acesso mínimo, prazo de retenção e exclusão segura.
 
 ---
 
@@ -274,4 +293,4 @@ são licenciados para reutilização pela licença do código.
 - 🔧 Para instalar: leia **[INSTALACAO.md](INSTALACAO.md)**
 - 🎮 Para usar no dia do evento: leia **[OPERACAO.md](OPERACAO.md)**
 - 💻 Para entender o código / API: leia **[backend/README.md](backend/README.md)**
-- 📖 Documentação interativa da API: rode o servidor e acesse `http://localhost:8001/docs`
+- 📖 Documentação interativa da API: rode o servidor e acesse `http://localhost:8001/api/docs`

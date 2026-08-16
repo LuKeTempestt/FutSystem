@@ -5,7 +5,7 @@ Servidor unico (API + front-end estatico):
     uvicorn backend.main:app --host 127.0.0.1 --port 8001
 
 Documentacao automatica:
-    http://localhost:8001/docs
+    http://localhost:8001/api/docs
 
 Controle de acesso:
     - rotas /api/auth/login    : publicas
@@ -52,6 +52,7 @@ GRUPOS_PADRAO = [
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    auth.validar_configuracao_producao()
     init_db()
     db = SessionLocal()
     try:
@@ -75,6 +76,9 @@ app = FastAPI(
     description="API REST do Campeonato de Futebol Digital — Copa AVOSOS.",
     version="2.0.0",
     lifespan=lifespan,
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+    redoc_url=None,
 )
 app.add_middleware(RequestProtectionMiddleware)
 
@@ -106,7 +110,7 @@ def info():
     return {
         "app": "Copa AVOSOS",
         "status": "ok",
-        "docs": "/docs",
+        "docs": "/api/docs",
         "site": "/",
     }
 
@@ -136,8 +140,12 @@ def login(
 
 
 @app.post("/api/auth/logout", tags=["auth"])
-def logout(user: auth.UsuarioAuth = Depends(auth.usuario_atual)):
-    auth.revogar_tokens_de(user.id)
+def logout(
+    db: Session = Depends(get_db),
+    user: auth.UsuarioAuth = Depends(auth.usuario_atual),
+):
+    auth.revogar_tokens_de(db, user.id)
+    db.commit()
     return {"detail": "Logout efetuado."}
 
 

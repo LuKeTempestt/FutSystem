@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from starlette.routing import Mount
 
 from backend import auth, crud, main, models, schemas
-from backend.database import Base
+from backend.database import Base, _normalizar_database_url
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,14 +24,12 @@ class SecurityRegressionTests(unittest.TestCase):
         self.engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(self.engine)
         self.db = sessionmaker(bind=self.engine)()
-        auth.TOKENS_ATIVOS.clear()
         auth._RATE_LIMIT_LOGIN.clear()
         auth._RATE_LIMIT_REGISTRO.clear()
 
     def tearDown(self):
         self.db.close()
         self.engine.dispose()
-        auth.TOKENS_ATIVOS.clear()
         auth._RATE_LIMIT_LOGIN.clear()
         auth._RATE_LIMIT_REGISTRO.clear()
 
@@ -228,7 +226,7 @@ class SecurityRegressionTests(unittest.TestCase):
         caminhos = {getattr(route, "path", None) for route in main.app.routes}
         self.assertNotIn("/api/usuarios/disponivel", caminhos)
 
-    def test_active_tokens_are_bounded_per_user(self):
+    def test_jwt_is_validated_against_persistent_revocation_version(self):
         usuario = models.Usuario(
             username="gestor",
             senha_hash=auth.gerar_hash("segredo-valido"),
@@ -236,10 +234,49 @@ class SecurityRegressionTests(unittest.TestCase):
         )
         self.db.add(usuario)
         self.db.commit()
-        for _ in range(auth.MAX_TOKENS_POR_USUARIO + 3):
-            auth.criar_token(usuario)
-        tokens = [item for item in auth.TOKENS_ATIVOS.values() if item.id == usuario.id]
-        self.assertEqual(auth.MAX_TOKENS_POR_USUARIO, len(tokens))
+        token = auth.criar_token(usuario)
+        autenticado = auth.usuario_atual(
+            authorization=f"Bearer {token}",
+            db=self.db,
+        )
+        self.assertEqual(usuario.id, autenticado.id)
+
+        auth.revogar_tokens_de(self.db, usuario.id)
+        self.db.commit()
+        with self.assertRaises(HTTPException) as erro:
+            auth.usuario_atual(authorization=f"Bearer {token}", db=self.db)
+        self.assertEqual(401, erro.exception.status_code)
+
+    def test_tampered_jwt_is_rejected(self):
+        usuario = models.Usuario(
+            username="gestor-jwt",
+            senha_hash=auth.gerar_hash("segredo-valido"),
+            role="admin",
+        )
+        self.db.add(usuario)
+        self.db.commit()
+        token = auth.criar_token(usuario)
+        adulterado = token[:-1] + ("a" if token[-1] != "a" else "b")
+        with self.assertRaises(HTTPException) as erro:
+            auth.usuario_atual(
+                authorization=f"Bearer {adulterado}", db=self.db
+            )
+        self.assertEqual(401, erro.exception.status_code)
+
+    def test_vercel_requires_explicit_jwt_secret(self):
+        with patch.dict(
+            os.environ,
+            {"VERCEL": "1", "FUTSYSTEM_JWT_SECRET": ""},
+            clear=False,
+        ):
+            with self.assertRaises(RuntimeError):
+                auth.validar_configuracao_producao()
+
+    def test_postgres_url_selects_psycopg3_driver(self):
+        self.assertEqual(
+            "postgresql+psycopg://user:pass@host/db",
+            _normalizar_database_url("postgresql://user:pass@host/db"),
+        )
 
     def test_reset_revokes_deleted_user_tokens_but_keeps_admin(self):
         admin = models.Usuario(username="admin2", senha_hash="hash", role="admin")
@@ -251,8 +288,14 @@ class SecurityRegressionTests(unittest.TestCase):
 
         crud.resetar_tudo(self.db)
 
-        self.assertIn(token_admin, auth.TOKENS_ATIVOS)
-        self.assertNotIn(token_usuario, auth.TOKENS_ATIVOS)
+        autenticado = auth.usuario_atual(
+            authorization=f"Bearer {token_admin}", db=self.db
+        )
+        self.assertEqual(admin.id, autenticado.id)
+        with self.assertRaises(HTTPException):
+            auth.usuario_atual(
+                authorization=f"Bearer {token_usuario}", db=self.db
+            )
 
     def test_frontend_security_guards_remain_present(self):
         components = (ROOT / "js" / "components.js").read_text(encoding="utf-8")

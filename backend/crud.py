@@ -321,7 +321,7 @@ def excluir_inscricao(db: Session, inscricao_id: int) -> bool:
         .first()
     )
     if usuario:
-        auth.revogar_tokens_de(usuario.id)
+        auth.revogar_tokens_de(db, usuario.id)
         db.delete(usuario)
     db.delete(ins)
     db.commit()
@@ -369,7 +369,7 @@ def trocar_senha(
     if not nova_senha or len(nova_senha) < minimo:
         raise ValueError(f"A senha precisa ter pelo menos {minimo} caracteres.")
     u.senha_hash = auth.gerar_hash(nova_senha)
-    auth.revogar_tokens_de(u.id)
+    auth.revogar_tokens_de(db, u.id)
     db.commit()
     db.refresh(u)
     return u
@@ -379,7 +379,7 @@ def excluir_usuario(db: Session, usuario_id: int) -> bool:
     u = db.get(models.Usuario, usuario_id)
     if not u:
         return False
-    auth.revogar_tokens_de(u.id)
+    auth.revogar_tokens_de(db, u.id)
     db.delete(u)
     db.commit()
     return True
@@ -711,7 +711,7 @@ def resetar_tudo(db: Session) -> None:
         db.scalars(select(models.Usuario).where(models.Usuario.role == "user"))
     )
     for usuario in usuarios:
-        auth.revogar_tokens_de(usuario.id)
+        auth.revogar_tokens_de(db, usuario.id)
     db.execute(delete(models.Partida))
     db.execute(delete(models.Usuario).where(models.Usuario.role == "user"))
     db.execute(delete(models.Inscricao))

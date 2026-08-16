@@ -53,6 +53,8 @@ class Usuario(Base):
         unique=True,
     )
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Incrementado para invalidar JWTs apos logout ou troca de senha.
+    auth_versao: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     inscricao: Mapped[Optional["Inscricao"]] = relationship(

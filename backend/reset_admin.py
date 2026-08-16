@@ -43,7 +43,7 @@ def main() -> None:
             admin.senha_hash = auth.gerar_hash(nova_senha)
             admin.role = "admin"
             admin.ativo = True
-            auth.revogar_tokens_de(admin.id)
+            auth.revogar_tokens_de(db, admin.id)
             db.commit()
             print(f"[OK] Senha do admin 'admin' atualizada.")
         else:
